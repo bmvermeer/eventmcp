@@ -1,4 +1,4 @@
-eventmcp
+Snyk Event MCP server
 ==========
 
 A Model Context Protocol (MCP) server for managing events on the Snyk Event Board in Jira, built with Quarkus and Java 21.
