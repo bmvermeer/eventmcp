@@ -1,0 +1,9 @@
+{
+  "aliases": {
+    "eventmcp": {
+      "description": "Run the Snyk Event MCP tool",
+      "script-ref": "https://github.com/bmvermeer/eventmcp/releases/latest/download/eventmcp-runner.jar",
+      "java": "21"
+    }
+  }
+}
