@@ -55,6 +55,7 @@
     </dependencies>
 
     <build>
+        <finalName>eventmcp</finalName>
         <plugins>
             <plugin>
                 <groupId>${quarkus.platform.group-id}</groupId>
