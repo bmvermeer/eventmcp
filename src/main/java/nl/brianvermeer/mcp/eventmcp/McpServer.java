@@ -308,25 +308,4 @@ public class McpServer {
             return false;
         }
     }
-
-//    public static void main(String[] args) throws IOException, InterruptedException {
-//        JiraClient client = new JiraClient();
-//        client.username = "brianvermeer@snyk.io";
-//        client.apiToken ="ATATT3xFfGF0KHjqBQN_KuyS7WZLXnRQ-fVYpxOBJ3u2GzdQGxSQy63rzv7eXv-lQILi0UH1vfuhj7MmBZpfYgQnXIXV83MIaAbIIdVAGWR5bTSPSDdtTysKx9eAog9oAKRTzBGETxy8KiS0QgYtgbuC5FqvE7VboSUvdI721TV_pkrTq4Dsdns=B3C32503";
-//
-//        McpServer server = new McpServer(client);
-//        //var result = server.updateEvent("BTBFE-4375", null,null, null,null,null,null,null,null,null,null,null,"CFP Submitted");
-//        var transitions = server.getTransitions("BTBFE-4375");
-//        System.out.println(transitions);
-//
-//        var result = server.updateStatus("BTBFE-4375", 2);
-//        System.out.println(result);
-//
-//
-//    }
-
-
-
-
-
 }
