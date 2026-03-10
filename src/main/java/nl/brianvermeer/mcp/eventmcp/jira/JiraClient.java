@@ -1,6 +1,5 @@
 package nl.brianvermeer.mcp.eventmcp.jira;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import nl.brianvermeer.mcp.eventmcp.jira.issue.IssuePayload;
@@ -156,15 +155,6 @@ public class JiraClient {
         return allIssues;
     }
 
-    private String fieldAsJson(Object fieldValue) {
-        try {
-            return objectMapper.writeValueAsString(fieldValue);
-        } catch (JsonProcessingException e) {
-            Log.error("Failed to convert field value to JSON: ", e);
-            return "\"\"";
-        }
-    }
-
     private HttpResponse<String> getHttpResponse(String jqlQuery, String nextPageToken) throws IOException, InterruptedException {
         Map<String, Object> requestData = new HashMap<>();
         requestData.put("jql", jqlQuery);
@@ -196,7 +186,7 @@ public class JiraClient {
 
 
     public JiraIssue getIssue(String btbfeId) throws IOException, InterruptedException {
-        return getJiraBoardContent("key = " + btbfeId).get(0);
+        return getJiraBoardContent("key = " + btbfeId).getFirst();
     }
 
     public List<Transition> getTransitions(String issueKey) throws IOException, InterruptedException {
