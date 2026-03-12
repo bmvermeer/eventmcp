@@ -164,12 +164,20 @@ description = "<updated plain text body, or blank to keep current>"
 
 ## After Submission
 
-Once the tool call completes, confirm to the user:
-- Whether the report was created or updated
-- The title used
-- Which sections were included, one per line
+Once the tool call completes:
 
-Do not repeat the full report body back to the user — they can view it in Atlassian.
+1. Show the full report to the user exactly as it was submitted — title first, then the description body.
+2. List which sections were included, one per line.
+3. Ask the user to confirm the report is correct before proceeding:
+   "Does this look good? If so, I'll mark the report as Done in Jira."
+
+Wait for an explicit confirmation (e.g. "yes", "looks good", "go ahead") before continuing.
+If the user requests changes, apply them via updateReport and show the updated report again before asking for confirmation.
+
+4. Once confirmed, call getTransitions with the report issue key to retrieve available transitions.
+   Find the transition that corresponds to "Done" (match case-insensitively on the transition name).
+   Call updateStatus with the report issue key and the matching transition id.
+5. Confirm to the user that the report has been marked as Done.
 
 ---
 

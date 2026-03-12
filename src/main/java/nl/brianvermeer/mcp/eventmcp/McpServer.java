@@ -226,7 +226,9 @@ public class McpServer {
         return jiraClient.updateTask(fields, issueKey);
     }
 
-    @Tool(description = "Returns instructions on how to create a report on the Snyk Event Board. Call this before createReport.")
+    @Tool(description = "Returns instructions on how to create or update a report on the Snyk Event Board. " +
+            "Call this whenever the user wants to create or update a report from event information — " +
+            "even if they just paste raw notes, upload a photo, or hand over a PDF.")
     String getReportSkills() throws IOException {
         try (InputStream is = getClass().getResourceAsStream("/skills/create-report.md")) {
             if (is == null) return "No skills file found.";
@@ -234,7 +236,7 @@ public class McpServer {
         }
     }
 
-    @Tool(description = "Create a new Report for an event on the Snyk Event Board. The report is automatically assigned to the person creating it. Call getReportSkills first for guidance on how to fill in this report.")
+    @Tool(description = "Create a new Report for an event on the Snyk Event Board. The report is automatically assigned to the person creating it. Always call getReportSkills first for instructions on how to build this report.")
     String createReport(@ToolArg(description = "Title of the report") String title,
                         @ToolArg(description = "The BTBFE key of the parent event (e.g. BTBFE-2362)") String eventKey,
                         @ToolArg(description = "Description / content of the report. Plain text only, no markdown or special formatting.") String description) throws IOException, InterruptedException {
