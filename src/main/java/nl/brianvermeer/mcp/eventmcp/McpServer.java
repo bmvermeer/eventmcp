@@ -3,7 +3,9 @@ package nl.brianvermeer.mcp.eventmcp;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import nl.brianvermeer.mcp.eventmcp.jira.JiraClient;
+import nl.brianvermeer.mcp.eventmcp.jira.model.Content;
 import nl.brianvermeer.mcp.eventmcp.jira.model.CustomFieldValue;
+import nl.brianvermeer.mcp.eventmcp.jira.model.Description;
 import nl.brianvermeer.mcp.eventmcp.jira.model.Fields;
 import nl.brianvermeer.mcp.eventmcp.jira.model.IssueType;
 import nl.brianvermeer.mcp.eventmcp.jira.model.JiraIssue;
@@ -13,7 +15,10 @@ import nl.brianvermeer.mcp.eventmcp.jira.model.Transition;
 
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 
 import static nl.brianvermeer.mcp.eventmcp.jira.JiraDetails.PROJECT_KEY;
@@ -221,6 +226,45 @@ public class McpServer {
         return jiraClient.updateTask(fields, issueKey);
     }
 
+    @Tool(description = "Returns instructions on how to create a report on the Snyk Event Board. Call this before createReport.")
+    String getReportSkills() throws IOException {
+        try (InputStream is = getClass().getResourceAsStream("/skills/create-report.md")) {
+            if (is == null) return "No skills file found.";
+            return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        }
+    }
+
+    @Tool(description = "Create a new Report for an event on the Snyk Event Board. The report is automatically assigned to the person creating it. Call getReportSkills first for guidance on how to fill in this report.")
+    String createReport(@ToolArg(description = "Title of the report") String title,
+                        @ToolArg(description = "The BTBFE key of the parent event (e.g. BTBFE-2362)") String eventKey,
+                        @ToolArg(description = "Description / content of the report. Plain text only, no markdown or special formatting.") String description) throws IOException, InterruptedException {
+        if (!isValidIssueKey(eventKey)) {
+            return "Error: Event key must be in format BTBFE-<number> (e.g. BTBFE-2362)";
+        }
+        if (title == null || title.isBlank()) {
+            return "Error: Title is required";
+        }
+        if (description == null || description.isBlank()) {
+            return "Error: Description is required";
+        }
+
+        var currentUser = jiraClient.findCurrentUser();
+        var fields = buildReportFields("Report", title, currentUser.accountId(), description, eventKey);
+        return jiraClient.createTask(fields);
+    }
+
+    @Tool(description = "Update an existing Report on the Snyk Event Board")
+    String updateReport(@ToolArg(description = "The BTBFE issue key of the report to update (e.g. BTBFE-2400)") String issueKey,
+                        @ToolArg(description = "Title of the report (optional, leave blank to keep current)") String title,
+                        @ToolArg(description = "Description / content of the report. Plain text only, no markdown or special formatting. (optional, leave blank to keep current)") String description) throws IOException, InterruptedException {
+        if (!isValidIssueKey(issueKey)) {
+            return "Error: Issue key must be in format BTBFE-<number> (e.g. BTBFE-2400)";
+        }
+
+        var fields = buildReportFields(null, title, null, description, null);
+        return jiraClient.updateTask(fields, issueKey);
+    }
+
     @Tool(description = "Find a user by name or email")
     Person findUser(@ToolArg(description = "The name or email of the user") String name) throws IOException, InterruptedException {
         return jiraClient.findUser(name);
@@ -249,6 +293,29 @@ public class McpServer {
     }
 
 
+
+    private Fields buildReportFields(String issueTypeName, String title, String assigneeId, String description, String parentKey) {
+        title = normalizeBlank(title);
+        assigneeId = normalizeBlank(assigneeId);
+        description = normalizeBlank(description);
+        parentKey = normalizeBlank(parentKey);
+
+        var user = assigneeId != null ? new Person(null, assigneeId, null, null, true, null, null) : null;
+        var parent = parentKey != null ? new JiraIssue(null, null, null, parentKey, null) : null;
+        var desc = description != null ? buildDescription(description) : null;
+
+        return new Fields(new Project(PROJECT_KEY),
+                desc, user,
+                issueTypeName != null ? new IssueType(issueTypeName) : null,
+                null,
+                title, null, null, null, null, null, null, null, null, null, null, null, null, null, null, parent);
+    }
+
+    private Description buildDescription(String text) {
+        return new Description("doc", 1,
+                List.of(new Content("paragraph",
+                        List.of(Map.of("type", "text", "text", text)))));
+    }
 
     private Fields buildFields(String issueTypeName, String title, String assignee,
                                 String startdate, String enddate, String location, String region,
