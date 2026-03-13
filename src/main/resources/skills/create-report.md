@@ -164,20 +164,36 @@ description = "<updated plain text body, or blank to keep current>"
 
 ## After Submission
 
-Once the tool call completes:
+MANDATORY — do not skip any of these steps, in this exact order.
 
-1. Show the full report to the user exactly as it was submitted — title first, then the description body.
-2. List which sections were included, one per line.
-3. Ask the user to confirm the report is correct before proceeding:
-   "Does this look good? If so, I'll mark the report as Done in Jira."
+Step 1 — SHOW THE FULL REPORT
+Immediately after the tool call completes, output the full report in the chat exactly as submitted.
+Use this format:
 
-Wait for an explicit confirmation (e.g. "yes", "looks good", "go ahead") before continuing.
-If the user requests changes, apply them via updateReport and show the updated report again before asking for confirmation.
+Title: <report title>
 
-4. Once confirmed, call getTransitions with the report issue key to retrieve available transitions.
-   Find the transition that corresponds to "Done" (match case-insensitively on the transition name).
-   Call updateStatus with the report issue key and the matching transition id.
-5. Confirm to the user that the report has been marked as Done.
+<full description body, every line, nothing omitted>
+
+Do not summarise. Do not say "the report has been submitted". Do not move on. Show the complete text first.
+
+Step 2 — LIST THE SECTIONS
+After the report body, list which sections were included, one per line.
+
+Step 3 — ASK FOR CONFIRMATION — STOP AND WAIT
+After listing the sections, ask the user explicitly:
+"Does this look correct? If so, I'll mark the report as Done in Jira. Please confirm before I proceed."
+
+Do not call any further tools until the user replies.
+Do not assume confirmation. Do not proceed on silence.
+If the user requests changes, apply them via updateReport, then repeat from Step 1.
+
+Step 4 — TRANSITION TO DONE (only after explicit confirmation)
+Once the user has confirmed, call getTransitions with the report issue key.
+Find the transition whose name matches "Done" (case-insensitive).
+Call updateStatus with the report issue key and the matching transition id.
+
+Step 5 — CONFIRM COMPLETION
+Tell the user the report has been marked as Done in Jira.
 
 ---
 
