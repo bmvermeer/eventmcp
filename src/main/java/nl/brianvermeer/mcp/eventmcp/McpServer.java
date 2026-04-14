@@ -19,6 +19,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 
 import static nl.brianvermeer.mcp.eventmcp.jira.JiraDetails.PROJECT_KEY;
@@ -90,12 +91,14 @@ public class McpServer {
         return jiraClient.updateTask(fields, issueKey);
     }
 
-    @Tool(description = "Search for Events on the Snyk Event Board. Filter by date range, text query, status and/or region. Date range prevents large result sets so actively ask for that.")
+    @Tool(description = "Search for Events on the Snyk Event Board. Filter by date range, text query, status, region and/or open CFP. Date range prevents large result sets so actively ask for that.")
     List<JiraIssue> searchEvents(@ToolArg(description = "Start date in format yyyy-MM-dd (optional, leave blank to not filter on date)") String startdate,
                               @ToolArg(description = "End date in format yyyy-MM-dd (optional, leave blank to not filter on date)") String enddate,
                               @ToolArg(description = "Optional text search query to match against event fields. Leave blank to skip text search.") String query,
                               @ToolArg(description = "Optional filter on status: To review, Considering, In progress, Not doing, Done or Duplicate. Leave blank for all except Not doing.") String status,
-                              @ToolArg(description = "Optional filter on region: EMEA, AMER or APJ. Leave blank for all regions.") String region) throws IOException, InterruptedException {
+                              @ToolArg(description = "Optional filter on region: EMEA, AMER or APJ. Leave blank for all regions.") String region,
+                              @ToolArg(description = "Set to true to only return events with an open CFP (CFP closing date is today or in the future). Leave false or blank for all events.") boolean openCfpOnly,
+                              @ToolArg(description = "Optional filter on one or more technologies. Each value must be one of the predefined labels (no spaces): AI, DataScience, Security, Privacy, Compliance, CloudComputing, Kubernetes, DevOps, PlatformEngineering, SoftwareDevelopment, SoftwareArchitecture, API, Testing, Automation, OpenSource, Agile, WebDevelopment, UIUX, Accessibility, MobileApps, Blockchain, EdgeComputing, IoT, Robotics, AR/VR, QuantumComputing, Sustainability, EngineeringLeadership, Innovation, CareerDevelopment, Community, .NET, Java, JavaScript, TypeScript, Python, Go, Rust, Kotlin, Swift, Dart, PHP, Ruby, C++, C#, ObjectiveC, R, SQL. Leave empty for all technologies.") List<String> technologies) throws IOException, InterruptedException {
         startdate = normalizeBlank(startdate);
         enddate = normalizeBlank(enddate);
         query = normalizeBlank(query);
@@ -127,6 +130,17 @@ public class McpServer {
 
         if (region != null) {
             jql.append(" AND cf[12620] = \"").append(region).append("\"");
+        }
+
+        if (openCfpOnly) {
+            jql.append(" AND cf[12302] >= startOfDay()");
+        }
+
+        if (technologies != null && !technologies.isEmpty()) {
+            var quoted = technologies.stream()
+                    .map(t -> "\"" + t + "\"")
+                    .collect(Collectors.joining(", "));
+            jql.append(" AND cf[12979] in (").append(quoted).append(")");
         }
 
         jql.append(" ORDER BY duedate ASC");
