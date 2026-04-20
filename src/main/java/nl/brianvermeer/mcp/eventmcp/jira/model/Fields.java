@@ -25,11 +25,13 @@ public record Fields(
         @JsonProperty("customfield_12086") String url, //URL
         @JsonProperty("customfield_13373") CustomFieldValue eventType,
         @JsonProperty("customfield_12089") CustomFieldValue eventFormat,
+        @JsonProperty("customfield_18821") CustomFieldValue tier,
 
         @JsonProperty("customfield_12977") CustomFieldValue audience,
         @JsonProperty("customfield_12978") String attendees,
         @JsonProperty("customfield_12979") List<String> technologies,
         @JsonProperty("customfield_12980") String importSource,
+        @JsonProperty("customfield_18680") Integer sessionAttendance,
         JiraIssue parent
 ) {
 }

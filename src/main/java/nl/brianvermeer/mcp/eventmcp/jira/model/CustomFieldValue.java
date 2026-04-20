@@ -8,6 +8,7 @@ public record CustomFieldValue(String value, String id) {
     public static final CustomFieldValue EVENT_TYPE_MEETUP = new CustomFieldValue("Meetup", "17007");
     public static final CustomFieldValue EVENT_TYPE_CUSTOMER = new CustomFieldValue("Customer", "17008");
     public static final CustomFieldValue EVENT_TYPE_WEBINAR = new CustomFieldValue("Webinar", "17009");
+    public static final CustomFieldValue EVENT_TYPE_AI_SEC_ENG_COMMUNITY = new CustomFieldValue("AI Sec Eng Community", "18161");
 
     public static final CustomFieldValue EVENT_FORMAT_VIRTUAL = new CustomFieldValue("Virtual", "13832");
     public static final CustomFieldValue EVENT_FORMAT_IN_PERSON = new CustomFieldValue("In-person", "13831");
@@ -39,6 +40,10 @@ public record CustomFieldValue(String value, String id) {
     public static final CustomFieldValue AUDIENCE_UNKNOWN = new CustomFieldValue("Unknown", "16613");
     public static final CustomFieldValue AUDIENCE_OTHER = new CustomFieldValue("Other", "16614");
 
+    public static final CustomFieldValue TIER_1 = new CustomFieldValue("Tier 1", "22318");
+    public static final CustomFieldValue TIER_2 = new CustomFieldValue("Tier 2", "22319");
+    public static final CustomFieldValue TIER_3 = new CustomFieldValue("Tier 3", "22320");
+
     public static CustomFieldValue getEventType(String eventType) {
         if (eventType == null) { return null; }
         return switch (eventType.toLowerCase()) {
@@ -46,6 +51,7 @@ public record CustomFieldValue(String value, String id) {
             case "meetup" -> EVENT_TYPE_MEETUP;
             case "customer" -> EVENT_TYPE_CUSTOMER;
             case "webinar" -> EVENT_TYPE_WEBINAR;
+            case "ai sec eng community" -> EVENT_TYPE_AI_SEC_ENG_COMMUNITY;
             default -> null;
         };
     }
@@ -100,6 +106,16 @@ public record CustomFieldValue(String value, String id) {
             case "unknown" -> AUDIENCE_UNKNOWN;
             case "other" -> AUDIENCE_OTHER;
             default -> AUDIENCE_UNKNOWN;
+        };
+    }
+
+    public static CustomFieldValue getTier(String tier) {
+        if (tier == null) { return null; }
+        return switch (tier.toLowerCase()) {
+            case "tier 1", "tier1", "1" -> TIER_1;
+            case "tier 2", "tier2", "2" -> TIER_2;
+            case "tier 3", "tier3", "3" -> TIER_3;
+            default -> null;
         };
     }
 
