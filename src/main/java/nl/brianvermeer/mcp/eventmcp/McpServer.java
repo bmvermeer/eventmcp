@@ -188,7 +188,7 @@ public class McpServer {
             throw new IllegalArgumentException("Error: Event key must be in format BTBFE-<number> (e.g. BTBFE-2362)");
         }
 
-        var jql = new StringBuilder("issuetype = CFP");
+        var jql = new StringBuilder("issuetype = Talk");
 
         if (startdate != null && enddate != null) {
             jql.append(" AND due >= ").append(startdate).append(" AND due <= ").append(enddate);
