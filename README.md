@@ -88,15 +88,18 @@ The MCP server provides the following tools:
 ### Event Management
 - **createEvent**: Create a new event on the Snyk Event Board with details like title, date, location, event type (Conference, Meetup, Customer, Webinar, AI Sec Eng Community), format (Hybrid, In-person, Virtual), and optional CFP information
 - **updateEvent**: Update an existing event on the Snyk Event Board by its issue key
-- **searchEvents**: Search for events on the Snyk Event Board with optional filters by date range, text query, status, and region
+- **searchEvents**: Search for events on the Snyk Event Board with optional filters by date range, text query, status, region, tier (Tier 1, Tier 2, Tier 3), open CFP only, and technologies
 
 ### Issue Details
-- **getIssue**: Get a specific issue (event or subtask) from the Snyk Event Board by its BTBFE key
+- **getIssue**: Get a specific issue (event or subtask) from the Snyk Event Board by its BTBFE key. Returns a clean, readable representation with all field names and values resolved (no raw Jira custom field IDs)
 
-### CFP Management
+### CFP / Report Management
 - **createCfp**: Create a new CFP/talk submission for an event on the Snyk Event Board
-- **updateCfp**: Update an existing CFP/talk on the Snyk Event Board
+- **updateCfp**: Update an existing CFP/talk on the Snyk Event Board (title, assignee, session attendance)
 - **searchCfps**: Search for CFPs/talks on the Snyk Event Board with optional filters by date range, text query, status, assignee, and parent event key
+- **getReportSkills**: Returns instructions for creating or updating a report — call this before creating or updating a report
+- **createReport**: Create a new report for an event on the Snyk Event Board
+- **updateReport**: Update an existing report on the Snyk Event Board
 
 ### User Management
 - **findUser**: Find a user by name or email

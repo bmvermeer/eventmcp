@@ -3,9 +3,12 @@ package nl.brianvermeer.mcp.eventmcp;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import nl.brianvermeer.mcp.eventmcp.jira.JiraClient;
+import nl.brianvermeer.mcp.eventmcp.jira.model.Content;
 import nl.brianvermeer.mcp.eventmcp.jira.model.CustomFieldValue;
+import nl.brianvermeer.mcp.eventmcp.jira.model.Description;
 import nl.brianvermeer.mcp.eventmcp.jira.model.Fields;
 import nl.brianvermeer.mcp.eventmcp.jira.model.IssueType;
+import nl.brianvermeer.mcp.eventmcp.jira.model.EventIssue;
 import nl.brianvermeer.mcp.eventmcp.jira.model.JiraIssue;
 import nl.brianvermeer.mcp.eventmcp.jira.model.Person;
 import nl.brianvermeer.mcp.eventmcp.jira.model.Project;
@@ -13,7 +16,11 @@ import nl.brianvermeer.mcp.eventmcp.jira.model.Transition;
 
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 
 import static nl.brianvermeer.mcp.eventmcp.jira.JiraDetails.PROJECT_KEY;
@@ -49,7 +56,7 @@ public class McpServer {
         if (dateError != null) return dateError;
 
         var fields = buildFields("Event", title, assignee, startdate, enddate,
-                location, region, url, eventType, cfpLink, cfpCloses, eventFormat, null);
+                location, region, url, eventType, cfpLink, cfpCloses, eventFormat, null, null);
 
         return jiraClient.createTask(fields);
     }
@@ -80,22 +87,26 @@ public class McpServer {
         if (cfpError != null) return cfpError;
 
         var fields = buildFields(null, title, assignee, startdate, enddate,
-                location, region, url, eventType, cfpLink, cfpCloses, eventFormat, null);
+                location, region, url, eventType, cfpLink, cfpCloses, eventFormat, null, null);
 
         return jiraClient.updateTask(fields, issueKey);
     }
 
-    @Tool(description = "Search for Events on the Snyk Event Board. Filter by date range, text query, status and/or region. Date range prevents large result sets so actively ask for that.")
-    List<JiraIssue> searchEvents(@ToolArg(description = "Start date in format yyyy-MM-dd (optional, leave blank to not filter on date)") String startdate,
+    @Tool(description = "Search for Events on the Snyk Event Board. Filter by date range, text query, status, region and/or open CFP. Date range prevents large result sets so actively ask for that.")
+    List<EventIssue> searchEvents(@ToolArg(description = "Start date in format yyyy-MM-dd (optional, leave blank to not filter on date)") String startdate,
                               @ToolArg(description = "End date in format yyyy-MM-dd (optional, leave blank to not filter on date)") String enddate,
                               @ToolArg(description = "Optional text search query to match against event fields. Leave blank to skip text search.") String query,
                               @ToolArg(description = "Optional filter on status: To review, Considering, In progress, Not doing, Done or Duplicate. Leave blank for all except Not doing.") String status,
-                              @ToolArg(description = "Optional filter on region: EMEA, AMER or APJ. Leave blank for all regions.") String region) throws IOException, InterruptedException {
+                              @ToolArg(description = "Optional filter on region: EMEA, AMER or APJ. Leave blank for all regions.") String region,
+                              @ToolArg(description = "Set to true to only return events with an open CFP (CFP closing date is today or in the future). Leave false or blank for all events.") boolean openCfpOnly,
+                              @ToolArg(description = "Optional filter on one or more technologies. Each value must be one of the predefined labels (no spaces): AI, DataScience, Security, Privacy, Compliance, CloudComputing, Kubernetes, DevOps, PlatformEngineering, SoftwareDevelopment, SoftwareArchitecture, API, Testing, Automation, OpenSource, Agile, WebDevelopment, UIUX, Accessibility, MobileApps, Blockchain, EdgeComputing, IoT, Robotics, AR/VR, QuantumComputing, Sustainability, EngineeringLeadership, Innovation, CareerDevelopment, Community, .NET, Java, JavaScript, TypeScript, Python, Go, Rust, Kotlin, Swift, Dart, PHP, Ruby, C++, C#, ObjectiveC, R, SQL. Leave empty for all technologies.") List<String> technologies,
+                              @ToolArg(description = "Optional filter on tier: Tier 1, Tier 2 or Tier 3. Leave blank for all tiers.") String tier) throws IOException, InterruptedException {
         startdate = normalizeBlank(startdate);
         enddate = normalizeBlank(enddate);
         query = normalizeBlank(query);
         status = normalizeBlank(status);
         region = normalizeBlank(region);
+        tier = normalizeBlank(tier);
 
         if (startdate != null && !isValidDateFormat(startdate)) {
             return List.of();
@@ -124,21 +135,36 @@ public class McpServer {
             jql.append(" AND cf[12620] = \"").append(region).append("\"");
         }
 
+        if (openCfpOnly) {
+            jql.append(" AND cf[12302] >= startOfDay()");
+        }
+
+        if (technologies != null && !technologies.isEmpty()) {
+            var quoted = technologies.stream()
+                    .map(t -> "\"" + t + "\"")
+                    .collect(Collectors.joining(", "));
+            jql.append(" AND cf[12979] in (").append(quoted).append(")");
+        }
+
+        if (tier != null) {
+            jql.append(" AND cf[18821] = \"").append(tier).append("\"");
+        }
+
         jql.append(" ORDER BY duedate ASC");
 
-        return jiraClient.getJiraBoardContent(jql.toString());
+        return jiraClient.getJiraBoardContent(jql.toString()).stream().map(EventIssue::from).toList();
     }
 
     @Tool(description = "Get a specific issue (event or subtask) from the Snyk Event Board by its BTBFE key")
-    JiraIssue getIssue(@ToolArg(description = "The BTBFE issue key (e.g. BTBFE-123)") String issueKey) throws IOException, InterruptedException {
+    EventIssue getIssue(@ToolArg(description = "The BTBFE issue key (e.g. BTBFE-123)") String issueKey) throws IOException, InterruptedException {
         if (!isValidIssueKey(issueKey)) {
             throw new IllegalArgumentException("Error: Issue key must be in format BTBFE-<number> (e.g. BTBFE-123)");
         }
-        return jiraClient.getIssue(issueKey);
+        return EventIssue.from(jiraClient.getIssue(issueKey));
     }
 
     @Tool(description = "Search for CFPs / talks on the Snyk Event Board. Filter by date range, text query, status, assignee and/or parent event key.")
-    List<JiraIssue> searchCfps(@ToolArg(description = "Start date in format yyyy-MM-dd (optional, leave blank to not filter on date)") String startdate,
+    List<EventIssue> searchCfps(@ToolArg(description = "Start date in format yyyy-MM-dd (optional, leave blank to not filter on date)") String startdate,
                                @ToolArg(description = "End date in format yyyy-MM-dd (optional, leave blank to not filter on date)") String enddate,
                                @ToolArg(description = "Optional text search query to match against CFP fields. Leave blank to skip text search.") String query,
                                @ToolArg(description = "Optional filter on status: CFP Submitted, Accepted, Not Doing or Done. Leave blank for all.") String status,
@@ -162,7 +188,7 @@ public class McpServer {
             throw new IllegalArgumentException("Error: Event key must be in format BTBFE-<number> (e.g. BTBFE-2362)");
         }
 
-        var jql = new StringBuilder("issuetype = CFP");
+        var jql = new StringBuilder("issuetype = Talk");
 
         if (startdate != null && enddate != null) {
             jql.append(" AND due >= ").append(startdate).append(" AND due <= ").append(enddate);
@@ -186,7 +212,7 @@ public class McpServer {
 
         jql.append(" ORDER BY duedate ASC");
 
-        return jiraClient.getJiraBoardContent(jql.toString());
+        return jiraClient.getJiraBoardContent(jql.toString()).stream().map(EventIssue::from).toList();
     }
 
 
@@ -202,7 +228,7 @@ public class McpServer {
         }
 
         var fields = buildFields("CFP", title, assignee,
-                null, null, null, null, null, null, null, null, null, eventKey);
+                null, null, null, null, null, null, null, null, null, null, eventKey);
 
         return jiraClient.createTask(fields);
     }
@@ -210,14 +236,56 @@ public class McpServer {
     @Tool(description = "Update an existing CFP / talk on the Snyk Event Board")
     String updateCfp(@ToolArg(description = "The BTBFE issue key of the CFP to update (e.g. BTBFE-2400)") String issueKey,
                      @ToolArg(description = "Title of the talk (optional, leave blank to keep current)") String title,
-                     @ToolArg(description = "Assigned user id (optional, leave blank to keep current)") String assignee) throws IOException, InterruptedException {
+                     @ToolArg(description = "Assigned user id (optional, leave blank to keep current)") String assignee,
+                     @ToolArg(description = "Session attendance count (optional, leave blank to keep current)") Integer sessionAttendance) throws IOException, InterruptedException {
         if (!isValidIssueKey(issueKey)) {
             return "Error: Issue key must be in format BTBFE-<number> (e.g. BTBFE-2400)";
         }
 
         var fields = buildFields(null, title, assignee,
-                null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, sessionAttendance, null);
 
+        return jiraClient.updateTask(fields, issueKey);
+    }
+
+    @Tool(description = "Returns instructions on how to create or update a report on the Snyk Event Board. " +
+            "Call this whenever the user wants to create or update a report from event information — " +
+            "even if they just paste raw notes, upload a photo, or hand over a PDF.")
+    String getReportSkills() throws IOException {
+        try (InputStream is = getClass().getResourceAsStream("/skills/create-report.md")) {
+            if (is == null) return "No skills file found.";
+            return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        }
+    }
+
+    @Tool(description = "Create a new Report for an event on the Snyk Event Board. The report is automatically assigned to the person creating it. Always call getReportSkills first for instructions on how to build this report.")
+    String createReport(@ToolArg(description = "Title of the report") String title,
+                        @ToolArg(description = "The BTBFE key of the parent event (e.g. BTBFE-2362)") String eventKey,
+                        @ToolArg(description = "Description / content of the report. Plain text only, no markdown or special formatting.") String description) throws IOException, InterruptedException {
+        if (!isValidIssueKey(eventKey)) {
+            return "Error: Event key must be in format BTBFE-<number> (e.g. BTBFE-2362)";
+        }
+        if (title == null || title.isBlank()) {
+            return "Error: Title is required";
+        }
+        if (description == null || description.isBlank()) {
+            return "Error: Description is required";
+        }
+
+        var currentUser = jiraClient.findCurrentUser();
+        var fields = buildReportFields("Report", title, currentUser.accountId(), description, eventKey);
+        return jiraClient.createTask(fields);
+    }
+
+    @Tool(description = "Update an existing Report on the Snyk Event Board")
+    String updateReport(@ToolArg(description = "The BTBFE issue key of the report to update (e.g. BTBFE-2400)") String issueKey,
+                        @ToolArg(description = "Title of the report (optional, leave blank to keep current)") String title,
+                        @ToolArg(description = "Description / content of the report. Plain text only, no markdown or special formatting. (optional, leave blank to keep current)") String description) throws IOException, InterruptedException {
+        if (!isValidIssueKey(issueKey)) {
+            return "Error: Issue key must be in format BTBFE-<number> (e.g. BTBFE-2400)";
+        }
+
+        var fields = buildReportFields(null, title, null, description, null);
         return jiraClient.updateTask(fields, issueKey);
     }
 
@@ -250,10 +318,33 @@ public class McpServer {
 
 
 
+    private Fields buildReportFields(String issueTypeName, String title, String assigneeId, String description, String parentKey) {
+        title = normalizeBlank(title);
+        assigneeId = normalizeBlank(assigneeId);
+        description = normalizeBlank(description);
+        parentKey = normalizeBlank(parentKey);
+
+        var user = assigneeId != null ? new Person(null, assigneeId, null, null, true, null, null) : null;
+        var parent = parentKey != null ? new JiraIssue(null, null, null, parentKey, null) : null;
+        var desc = description != null ? buildDescription(description) : null;
+
+        return new Fields(new Project(PROJECT_KEY),
+                desc, user,
+                issueTypeName != null ? new IssueType(issueTypeName) : null,
+                null,
+                title, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, parent);
+    }
+
+    private Description buildDescription(String text) {
+        return new Description("doc", 1,
+                List.of(new Content("paragraph",
+                        List.of(Map.of("type", "text", "text", text)))));
+    }
+
     private Fields buildFields(String issueTypeName, String title, String assignee,
                                 String startdate, String enddate, String location, String region,
                                 String url, String eventType, String cfpLink, String cfpCloses,
-                                String eventFormat, String parentKey) {
+                                String eventFormat, Integer sessionAttendance, String parentKey) {
         title = normalizeBlank(title);
         assignee = normalizeBlank(assignee);
         startdate = normalizeBlank(startdate);
@@ -279,7 +370,7 @@ public class McpServer {
                 region != null ? CustomFieldValue.getRegion(region) : null, null, url,
                 eventType != null ? CustomFieldValue.getEventType(eventType) : null,
                 eventFormat != null ? CustomFieldValue.getEventFormat(eventFormat) : null,
-                null, null, null, "Event".equals(issueTypeName) ? "MCP" : null, parent);
+                null, null, null, null, "Event".equals(issueTypeName) ? "MCP" : null, sessionAttendance, parent);
     }
 
     private String validateOptionalDate(String date, String fieldName) {
