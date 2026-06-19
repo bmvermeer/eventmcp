@@ -227,7 +227,7 @@ public class McpServer {
             return "Error: Title is required";
         }
 
-        var fields = buildFields("CFP", title, assignee,
+        var fields = buildFields("Talk", title, assignee,
                 null, null, null, null, null, null, null, null, null, null, eventKey);
 
         return jiraClient.createTask(fields);
