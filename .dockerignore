@@ -1,5 +1,15 @@
-*
-!target/*-runner
+# The Dockerfile builds from source, so the context needs mvnw, .mvn, pom.xml and src.
+# Everything below is noise for an image build.
+.git/
+.github/
+.idea/
+.claude/
+.cursor/
+.qodo/
+*.iml
+.DS_Store
+.dccache
+
+# Keep only the runnable uber-jar from a local build (used by prebuilt-jar image variants).
+target/*
 !target/*-runner.jar
-!target/lib/*
-!target/quarkus-app/*

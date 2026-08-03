@@ -26,8 +26,27 @@ The following environment variables are required for the MCP server to function:
 - `JIRA_USERNAME`: Your Jira email address (e.g., `brianvermeer@snyk.io`)
 - `JIRA_TOKEN`: Your Jira API token (generate from your Jira account settings [here](https://id.atlassian.com/manage-profile/security/api-tokens))
 
+### Using NPX
 
-### Using [JBang](https://www.jbang.dev/) (Recommended)
+```json
+{
+  "mcpServers": {
+    "eventmcp": {
+      "command": "npx",
+      "args": [
+        "@jbangdev/jbang",
+        "eventmcp@bmvermeer/eventmcp"
+      ],
+      "env": {
+        "JIRA_USERNAME": "your-email@snyk.io",
+        "JIRA_TOKEN": "your-jira-api-token-here"
+      }
+    }
+  }
+}
+```
+
+### Using [JBang](https://www.jbang.dev/)
 
 Configure in your MCP client (e.g., Cursor, Claude Desktop):
 
@@ -46,7 +65,58 @@ Configure in your MCP client (e.g., Cursor, Claude Desktop):
 }
 ```
 
-### Download the latest release and run with Java
+### Using Docker
+
+Run the MCP server in a container. The image is built straight from source, so you don't need
+Java or Maven installed locally — only Docker.
+
+Build the image:
+
+```shell script
+docker build -t eventmcp:latest .
+```
+
+Then configure your MCP client (e.g. Claude Desktop, Claude Code, Cursor):
+
+```json
+{
+  "mcpServers": {
+    "eventmcp": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-e", "JIRA_USERNAME",
+        "-e", "JIRA_TOKEN",
+        "eventmcp:latest"
+      ],
+      "env": {
+        "JIRA_USERNAME": "your-email@snyk.io",
+        "JIRA_TOKEN": "your-jira-api-token-here"
+      }
+    }
+  }
+}
+```
+
+Notes:
+- `-i` is required: the MCP stdio transport speaks JSON-RPC over the container's stdin/stdout.
+- Do **not** add `-t`; a TTY corrupts the protocol stream.
+- `-e JIRA_USERNAME -e JIRA_TOKEN` (no `=value`) forwards the values from the `env` block above
+  into the container, so your token stays out of the image and out of the command line.
+- `--rm` cleans up the container when the client disconnects.
+- Sometimes the command needs the full path to the `docker` executable, e.g. `/usr/local/bin/docker`.
+
+You can verify the container works before wiring it into a client:
+
+```shell script
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"probe","version":"1"}}}' \
+  | docker run -i --rm -e JIRA_USERNAME=you@snyk.io -e JIRA_TOKEN=your-token eventmcp:latest
+```
+
+This should print a single JSON line containing `"serverInfo":{"name":"eventmcp",...}`. Startup
+logging goes to stderr, so stdout stays a clean JSON-RPC stream.
+
+### Download the latest release and run with Java 
 - Use Java 21 or higher
 - Download [latest release](https://github.com/bmvermeer/eventmcp/releases/latest) from github
 
